@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/app/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { JwtService } from '@nestjs/jwt';
 
@@ -60,10 +60,8 @@ export class UserService {
       throw new UnauthorizedException();
     }
 
-    const newToken = await this.jwtService.signAsync(
-      { sub: user.id },
-      { expiresIn: '14d' },
-    );
+    const newToken = await this.jwtService.signAsync({ sub: user.id });
+    console.log(newToken);
 
     await this.prisma.user.update({
       where: {

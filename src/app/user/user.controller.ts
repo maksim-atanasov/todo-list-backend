@@ -7,17 +7,19 @@ import {
   HttpCode,
   NotFoundException,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { comparePassword, hashPassword } from 'src/utils/helpers/brcypter';
-import { Public } from 'src/Decorators/public.decorator';
+import { TokenAuthGuard } from 'src/guards/token-auth.guard';
+import { UserProvider } from 'src/decorators/userProvider.decorator';
+import { User } from '@prisma/client';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Public()
   @Post('/registration')
   @HttpCode(201)
   async registration(@Body() body: CreateUserDto) {
@@ -35,7 +37,6 @@ export class UserController {
     });
   }
 
-  @Public()
   @Post('/login')
   @HttpCode(200)
   async login(@Body() body: CreateUserDto) {
@@ -56,17 +57,13 @@ export class UserController {
     return { token };
   }
 
+  @UseGuards(TokenAuthGuard)
   @Get('/profile')
   @HttpCode(200)
-  async profile(@Headers('Authorization') token: string) {
-    const user = await this.userService.getUserByToken(token.split(' ')[1]);
-
-    if (user === null) {
-      return new NotFoundException('User not found');
-    }
-
+  profile(@UserProvider() user: User) {
     return {
       email: user.email,
+      created_at: user.created_at,
     };
   }
 }

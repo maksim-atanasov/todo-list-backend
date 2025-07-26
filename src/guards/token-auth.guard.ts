@@ -4,25 +4,17 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from 'src/Decorators/public.decorator';
-import { UserService } from 'src/user/user.service';
+import { JwtService } from '@nestjs/jwt';
+import { UserService } from 'src/app/user/user.service';
 
 @Injectable()
 export class TokenAuthGuard implements CanActivate {
   constructor(
     private userService: UserService,
-    private reflector: Reflector,
+    private jwtService: JwtService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (isPublic) return true;
-
     const request = context.switchToHttp().getRequest();
 
     const authHeader = request.headers['authorization'];
@@ -37,12 +29,18 @@ export class TokenAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid token format');
     }
 
-    const isValid = await this.userService.getUserByToken(token);
-    if (!isValid) {
+    try {
+      await this.jwtService.verifyAsync(token);
+    } catch {
       throw new UnauthorizedException('Token is invalid');
     }
 
-    request.user = { token };
+    const user = await this.userService.getUserByToken(token);
+    if (!user) {
+      throw new UnauthorizedException('Token is invalid');
+    }
+
+    request.user = user;
 
     return true;
   }
